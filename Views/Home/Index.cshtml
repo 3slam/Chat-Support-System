@@ -1,0 +1,32 @@
+@{
+    ViewData["Title"] = "Customer Chat";
+}
+
+<div class="chat-page">
+    <div class="chat-widget shadow" id="chatWidget">
+        <div class="chat-header">
+            <div>
+                <div class="chat-title">Trips Support</div>
+                <div class="chat-subtitle" id="chatStatus">We're here to help</div>
+            </div>
+            <div class="chat-header-actions">
+                <span class="chat-badge" id="agentBadge" style="display:none;"></span>
+                <button type="button" id="newChatBtn" class="new-chat-btn" title="Start a new chat">+ New chat</button>
+            </div>
+        </div>
+
+        <div class="chat-body" id="chatBody"></div>
+
+        <div class="chat-options" id="chatOptions"></div>
+
+        <form class="chat-input" id="chatForm" autocomplete="off">
+            <input type="text" id="chatText" placeholder="Type your message…" maxlength="2000" />
+            <button type="submit" id="chatSend">Send</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    <script src="~/js/customer-chat.js" asp-append-version="true"></script>
+}

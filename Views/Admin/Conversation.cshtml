@@ -1,0 +1,127 @@
+@using ChatSupport.Models
+@model Conversation
+@{
+    ViewData["Title"] = "Conversation";
+    var admins = (IEnumerable<dynamic>)ViewBag.Admins;
+    int adminId = ViewBag.AdminId;
+    bool isMine = Model.AssignedAdminId == adminId;
+    bool isClosed = Model.Status == ConversationStatus.Closed;
+    bool canReply = isMine && !isClosed;
+}
+
+<a asp-action="Inbox" class="btn btn-link px-0 mb-2">&larr; Back to inbox</a>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>@Model.CustomerName</strong>
+                    <span class="text-muted">
+                        @(Model.IsAuthenticated ? Model.CustomerEmail : "Guest")
+                    </span>
+                </div>
+                <span class="badge bg-info text-dark">@Model.Category · @Model.SubOption</span>
+            </div>
+
+            <div class="card-body chat-transcript" id="transcript">
+                @foreach (var m in Model.Messages.OrderBy(m => m.SentAt))
+                {
+                    var side = m.SenderType == SenderType.Agent ? "out"
+                        : m.SenderType == SenderType.Customer ? "in customer" : "in bot";
+                    <div class="msg msg-@side">
+                        <div class="msg-meta">@m.SenderName</div>
+                        <div class="msg-text">@m.Text</div>
+                    </div>
+                }
+            </div>
+
+            <div class="card-footer">
+                @if (canReply)
+                {
+                    <form id="replyForm" class="d-flex gap-2" autocomplete="off">
+                        <input id="replyText" class="form-control" placeholder="Type your reply…" maxlength="4000" />
+                        <button class="btn btn-primary" type="submit">Send</button>
+                    </form>
+                }
+                else if (isClosed)
+                {
+                    <div class="text-muted">This conversation is closed.</div>
+                }
+                else
+                {
+                    <form asp-action="Pickup" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <button class="btn btn-success" type="submit">
+                            Pick up &amp; assign to me
+                        </button>
+                        @if (Model.AssignedAdmin != null)
+                        {
+                            <span class="text-muted ms-2">Currently with @Model.AssignedAdmin.FullName</span>
+                        }
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="card-title">Details</h6>
+                <dl class="row mb-0 small">
+                    <dt class="col-5">Status</dt><dd class="col-7" id="statusLabel">@Model.Status</dd>
+                    <dt class="col-5">Category</dt><dd class="col-7">@Model.Category</dd>
+                    <dt class="col-5">Sub-option</dt><dd class="col-7">@Model.SubOption</dd>
+                    <dt class="col-5">Assigned</dt>
+                    <dd class="col-7">@(Model.AssignedAdmin?.FullName ?? "Unassigned")</dd>
+                    <dt class="col-5">Opened</dt><dd class="col-7">@Model.CreatedAt.ToLocalTime().ToString("g")</dd>
+                </dl>
+            </div>
+        </div>
+
+        @if (!isClosed)
+        {
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <h6 class="card-title">Reassign</h6>
+                    <form asp-action="Reassign" method="post" class="d-flex gap-2">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <select name="adminId" class="form-select form-select-sm">
+                            @foreach (var a in admins)
+                            {
+                                if (a.Id == Model.AssignedAdminId)
+                                {
+                                    <option value="@a.Id" selected>@a.FullName</option>
+                                }
+                                else
+                                {
+                                    <option value="@a.Id">@a.FullName</option>
+                                }
+                            }
+                        </select>
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">Assign</button>
+                    </form>
+                </div>
+            </div>
+
+            <form asp-action="Close" method="post" onsubmit="return confirm('Close this conversation?');">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button class="btn btn-outline-danger w-100" type="submit">Close conversation</button>
+            </form>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    <script>
+        const PUBLIC_ID = "@Model.PublicId";
+        const AGENT_NAME = @Json.Serialize((string)ViewBag.AdminName);
+        const CAN_REPLY = @(canReply ? "true" : "false");
+    </script>
+    <script src="~/js/admin-conversation.js" asp-append-version="true"></script>
+}
